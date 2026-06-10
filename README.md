@@ -13,7 +13,6 @@ Venmo request.
 - **TypeScript** (strict) + **Tailwind CSS 4** (`@theme` tokens, `prefers-color-scheme` dark mode)
 - **OpenAI** GPT-4o vision with **Structured Outputs** (strict `json_schema` via `zod` + `zodResponseFormat`) for receipt parsing
 - **Upstash Redis** for shareable-link persistence
-- **html2canvas** for the share-card PNG
 - Custom inline-SVG logo + icon set (no emoji, no icon font)
 - No UI library, no state library — native HTML + Tailwind + `useState`.
 

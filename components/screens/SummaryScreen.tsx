@@ -19,12 +19,10 @@ import {
   CircleIcon,
   EqualIcon,
   PercentIcon,
-  PhotosIcon,
   SendIcon,
   ShareIcon,
 } from "@/components/icons";
 import ReceiptViewer from "@/components/ReceiptViewer";
-import ShareCard from "@/components/ShareCard";
 import {
   computeBreakdown,
   formatMoney,
@@ -50,9 +48,8 @@ export default function SummaryScreen({
   onSaveVenmo?: (v: string) => void;
 }) {
   const breakdown = useMemo(() => computeBreakdown(session), [session]);
-  const cardRef = useRef<HTMLDivElement>(null);
   const [shareOpen, setShareOpen] = useState(false);
-  const [shareBusy, setShareBusy] = useState<null | "image" | "link">(null);
+  const [shareBusy, setShareBusy] = useState(false);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
 
   // Latest session, for use inside the polling closure without re-subscribing.
@@ -123,46 +120,9 @@ export default function SummaryScreen({
     }
   })();
 
-  // ── Share: PNG image ─────────────────────────────────────────────────────────
-  async function shareImage() {
-    if (!cardRef.current) return;
-    setShareBusy("image");
-    setShareMsg(null);
-    try {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(cardRef.current, {
-        backgroundColor: null,
-        scale: 2,
-      });
-      const blob = await new Promise<Blob | null>((res) =>
-        canvas.toBlob(res, "image/png"),
-      );
-      if (!blob) throw new Error("Could not render image.");
-      const file = new File([blob], "divvy-split.png", { type: "image/png" });
-      const nav = navigator as Navigator & {
-        canShare?: (d: { files: File[] }) => boolean;
-      };
-      if (nav.share && nav.canShare?.({ files: [file] })) {
-        await nav.share({ files: [file], title: "Divvy split" });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "divvy-split.png";
-        a.click();
-        URL.revokeObjectURL(url);
-        setShareMsg("Image saved.");
-      }
-    } catch (e) {
-      if (e instanceof Error && e.name !== "AbortError") setShareMsg(e.message);
-    } finally {
-      setShareBusy(null);
-    }
-  }
-
   // ── Share: link (persist to Upstash, copy URL) ───────────────────────────────
   async function shareLink() {
-    setShareBusy("link");
+    setShareBusy(true);
     setShareMsg(null);
     try {
       // Don't ship the (large, ephemeral) receipt photo to the share store.
@@ -187,7 +147,7 @@ export default function SummaryScreen({
     } catch (e) {
       if (e instanceof Error && e.name !== "AbortError") setShareMsg(e.message);
     } finally {
-      setShareBusy(null);
+      setShareBusy(false);
     }
   }
 
@@ -400,14 +360,6 @@ export default function SummaryScreen({
         </StickyBar>
       )}
 
-      {/* Offscreen share card for rasterization */}
-      <div
-        aria-hidden
-        style={{ position: "fixed", left: -9999, top: 0, pointerEvents: "none" }}
-      >
-        <ShareCard ref={cardRef} session={session} breakdown={breakdown} />
-      </div>
-
       {/* Share sheet */}
       {shareOpen && (
         <Sheet onClose={() => setShareOpen(false)} labelledBy="share-title">
@@ -442,34 +394,17 @@ export default function SummaryScreen({
             </div>
           </div>
 
-          <div className="space-y-3">
-            <Button onClick={shareImage} disabled={shareBusy !== null}>
-              {shareBusy === "image" ? (
-                <>
-                  <Spinner className="h-5 w-5" /> Rendering…
-                </>
-              ) : (
-                <>
-                  <PhotosIcon /> Share as image
-                </>
-              )}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={shareLink}
-              disabled={shareBusy !== null}
-            >
-              {shareBusy === "link" ? (
-                <>
-                  <Spinner className="h-5 w-5" /> Creating link…
-                </>
-              ) : (
-                <>
-                  <ShareIcon /> Copy shareable link
-                </>
-              )}
-            </Button>
-          </div>
+          <Button onClick={shareLink} disabled={shareBusy}>
+            {shareBusy ? (
+              <>
+                <Spinner className="h-5 w-5" /> Creating link…
+              </>
+            ) : (
+              <>
+                <ShareIcon /> Copy shareable link
+              </>
+            )}
+          </Button>
           {shareMsg && (
             <p className={`${T.caption} mt-3 text-center text-text-secondary`}>
               {shareMsg}

@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import PostHogProvider from "@/components/analytics/PostHogProvider";
 import "./globals.css";
 
 // Serif display face for the Divvy wordmark, headlines and summary totals.
@@ -32,7 +35,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${fraunces.variable} h-full`}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <PostHogProvider>{children}</PostHogProvider>
+        <Analytics />
+        <SpeedInsights />
+      </body>
     </html>
   );
 }

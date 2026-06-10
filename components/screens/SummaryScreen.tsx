@@ -31,6 +31,7 @@ import {
   subtotal,
 } from "@/lib/compute";
 import { venmoChargeLink } from "@/lib/venmo";
+import { track } from "@/lib/track";
 import type { SplitSession } from "@/lib/types";
 
 export default function SummaryScreen({
@@ -92,6 +93,7 @@ export default function SummaryScreen({
 
   function togglePaid(name: string) {
     const next = !session.paidStatus[name];
+    if (next) track("marked_paid", { shared: !!session.shared });
     onChange({
       ...session,
       paidStatus: { ...session.paidStatus, [name]: next },
@@ -143,6 +145,7 @@ export default function SummaryScreen({
     setShareMsg(null);
     try {
       await navigator.clipboard.writeText(await createLink());
+      track("link_copied");
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2200);
     } catch (e) {
@@ -157,6 +160,7 @@ export default function SummaryScreen({
     setShareMsg(null);
     try {
       const url = await createLink();
+      track("link_shared");
       const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
       if (nav.share) {
         await nav.share({ title: "Divvy split", url });
@@ -360,6 +364,7 @@ export default function SummaryScreen({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-block"
+                    onClick={() => track("venmo_request_clicked")}
                   >
                     <GoldButton>
                       <SendIcon className="h-4 w-4" /> Request

@@ -29,6 +29,7 @@ import {
 } from "@/lib/compute";
 import { displayName } from "@/lib/session";
 import { venmoPayLink } from "@/lib/venmo";
+import { track } from "@/lib/track";
 import type { SplitSession } from "@/lib/types";
 
 export default function SharedView({ initial }: { initial: SplitSession }) {
@@ -37,6 +38,11 @@ export default function SharedView({ initial }: { initial: SplitSession }) {
   const [error, setError] = useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [open, setOpen] = useState<Record<string, boolean>>({});
+
+  // A recipient opened the shared link — top of the viral loop.
+  useEffect(() => {
+    track("shared_opened", { people: initial.people.length });
+  }, [initial.id, initial.people.length]);
 
   // Poll so everyone viewing the link sees updates as others mark themselves
   // paid (or the bill-payer marks them paid in the app). Skipped while this
@@ -76,6 +82,7 @@ export default function SharedView({ initial }: { initial: SplitSession }) {
   const outstanding = total - paidTotal;
 
   async function togglePaid(name: string, next: boolean) {
+    if (next) track("shared_marked_paid");
     setPending(name);
     setError(null);
     // Optimistic update.
@@ -256,6 +263,7 @@ export default function SharedView({ initial }: { initial: SplitSession }) {
                         )}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={() => track("shared_venmo_clicked")}
                       >
                         <GoldButton>
                           <SendIcon className="h-4 w-4" /> Venmo
@@ -309,7 +317,11 @@ export default function SharedView({ initial }: { initial: SplitSession }) {
 
         {/* Footer */}
         <footer className="mt-10 text-center">
-          <a href="/" className={`${T.caption} text-text-tertiary underline`}>
+          <a
+            href="/"
+            onClick={() => track("shared_cta_clicked")}
+            className={`${T.caption} text-text-tertiary underline`}
+          >
             Try Divvy — split the bill, not the friendship
           </a>
         </footer>

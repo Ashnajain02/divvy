@@ -18,6 +18,7 @@ import {
   saveVenmo,
 } from "@/lib/local-storage";
 import { emptySession, sessionFromParsed } from "@/lib/session";
+import { track } from "@/lib/track";
 import type { ParsedReceipt, SplitSession } from "@/lib/types";
 
 type Screen = "home" | "capture" | "review" | "assign" | "summary";
@@ -60,10 +61,16 @@ export default function App() {
       const data = (await res.json()) as {
         receipt?: ParsedReceipt;
         error?: string;
+        attempts?: number;
       };
       if (!res.ok || !data.receipt) {
         throw new Error(data.error || "Couldn't read the receipt.");
       }
+      track("parse_succeeded", {
+        attempts: data.attempts ?? 1,
+        needs_review: !!data.receipt.needs_review,
+        items: data.receipt.items?.length ?? 0,
+      });
       const built = sessionFromParsed(data.receipt);
       built.receiptImageData = image;
       built.payerVenmo = venmo || undefined; // default from the saved handle
@@ -75,10 +82,9 @@ export default function App() {
       );
       setParse({ status: "ready" });
     } catch (e) {
-      setParse({
-        status: "error",
-        error: e instanceof Error ? e.message : "Couldn't read the receipt.",
-      });
+      const msg = e instanceof Error ? e.message : "Couldn't read the receipt.";
+      track("parse_failed", { error: msg });
+      setParse({ status: "error", error: msg });
     }
   }, [venmo]);
 
@@ -93,9 +99,20 @@ export default function App() {
   }
 
   function onReadReceipt(image: string) {
+    track("scan_started");
     setCaptureImage(image);
     setScreen("review");
     void runParse(image);
+  }
+
+  function goToSummary() {
+    if (draft) {
+      track("summary_reached", {
+        people: draft.people.length,
+        items: draft.items.length,
+      });
+    }
+    setScreen("summary");
   }
 
   function openHistory(s: SplitSession) {
@@ -116,6 +133,10 @@ export default function App() {
 
   function saveAndDone() {
     if (draft) {
+      track("split_saved", {
+        people: draft.people.length,
+        items: draft.items.length,
+      });
       saveSession(draft);
       refreshSessions();
     }
@@ -151,7 +172,7 @@ export default function App() {
           session={draft}
           onChange={updateDraft}
           onBack={() => setScreen("review")}
-          onContinue={() => setScreen("summary")}
+          onContinue={goToSummary}
         />
       ) : null;
 

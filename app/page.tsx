@@ -14,6 +14,7 @@ import Header from "@/components/landing/Header";
 import Reveal from "@/components/landing/Reveal";
 import AppTour from "@/components/landing/AppTour";
 import NoMore from "@/components/landing/NoMore";
+import SettleSection from "@/components/landing/SettleSection";
 import SplitHero, { type Sprites } from "@/components/landing/SplitHero";
 import { CameraIcon } from "@/components/icons";
 
@@ -44,6 +45,7 @@ export default function Landing() {
       {ready ? <SplitHero sprites={SPRITES} /> : <FallbackHero />}
       <AppTour />
       <NoMore />
+      <SettleSection />
       <ClosingCTA />
       <SiteFooter />
     </main>

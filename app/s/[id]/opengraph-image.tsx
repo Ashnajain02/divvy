@@ -9,7 +9,6 @@
 import { headers } from "next/headers";
 import { ImageResponse } from "next/og";
 import { getSharedSplit } from "@/lib/redis";
-import { formatMoney, grandTotal } from "@/lib/compute";
 
 export const runtime = "nodejs";
 export const alt = "Your Divvy split";
@@ -31,19 +30,12 @@ export default async function Image({
 }) {
   const { id } = await params;
 
-  // Split data.
-  let restaurant = "Divvy";
-  let total: string | null = null;
-  let peopleLine = "Split the bill, not the friendship";
+  // Just the restaurant name — no total/count on the card (keeps the bill
+  // amount out of the chat preview). null = no/expired split → generic card.
+  let restaurant: string | null = null;
   try {
     const s = await getSharedSplit(id);
-    if (s) {
-      restaurant = s.restaurantName?.trim() || "Your split";
-      total = formatMoney(grandTotal(s));
-      const n = s.people.length;
-      peopleLine =
-        n > 0 ? `Split ${n} ${n === 1 ? "way" : "ways"}` : "Tap to split up";
-    }
+    if (s) restaurant = s.restaurantName?.trim() || "Your split";
   } catch {
     // generic branded card
   }
@@ -91,7 +83,7 @@ export default async function Image({
           </div>
         </div>
 
-        {/* Center */}
+        {/* Center: restaurant name + tap prompt */}
         <div
           style={{
             display: "flex",
@@ -100,62 +92,23 @@ export default async function Image({
             justifyContent: "center",
           }}
         >
-          <div style={{ display: "flex", fontSize: 32, color: "#E6D194", marginBottom: 4 }}>
-            {restaurant}
-          </div>
-          {total ? (
-            <div
-              style={{
-                display: "flex",
-                fontFamily: "Fraunces",
-                fontSize: 150,
-                fontWeight: 700,
-                color: "#ffffff",
-                lineHeight: 1,
-              }}
-            >
-              {total}
-            </div>
-          ) : (
-            <div
-              style={{
-                display: "flex",
-                fontFamily: "Fraunces",
-                fontSize: 84,
-                fontWeight: 700,
-                color: "#ffffff",
-                lineHeight: 1.05,
-              }}
-            >
-              Split any bill from a photo
-            </div>
-          )}
-          <div style={{ display: "flex", fontSize: 36, color: "#E6D194", marginTop: 16 }}>
-            {peopleLine}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div style={{ display: "flex", fontSize: 30, color: "rgba(255,255,255,0.85)" }}>
-            Tap to see what you owe  →
-          </div>
           <div
             style={{
               display: "flex",
               fontFamily: "Fraunces",
-              fontSize: 24,
-              color: "rgba(255,255,255,0.5)",
+              fontSize: 88,
+              fontWeight: 700,
+              color: "#ffffff",
+              lineHeight: 1.05,
             }}
           >
-            divvy
+            {restaurant ?? "Split the bill, not the friendship"}
           </div>
+          {restaurant && (
+            <div style={{ display: "flex", fontSize: 40, color: "#E6D194", marginTop: 28 }}>
+              Tap to see what you owe  →
+            </div>
+          )}
         </div>
       </div>
     ),

@@ -17,6 +17,7 @@ import {
   AddOnIcon,
   CheckIcon,
   CircleIcon,
+  CopyIcon,
   EqualIcon,
   PercentIcon,
   SendIcon,
@@ -49,7 +50,8 @@ export default function SummaryScreen({
 }) {
   const breakdown = useMemo(() => computeBreakdown(session), [session]);
   const [shareOpen, setShareOpen] = useState(false);
-  const [shareBusy, setShareBusy] = useState(false);
+  const [shareBusy, setShareBusy] = useState<null | "copy" | "share">(null);
+  const [copied, setCopied] = useState(false);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
 
   // Latest session, for use inside the polling closure without re-subscribing.
@@ -120,34 +122,53 @@ export default function SummaryScreen({
     }
   })();
 
-  // ── Share: link (persist to Upstash, copy URL) ───────────────────────────────
-  async function shareLink() {
-    setShareBusy(true);
+  // ── Share: persist the split to Upstash and return its public URL ────────────
+  async function createLink(): Promise<string> {
+    // Don't ship the (large, ephemeral) receipt photo to the share store.
+    const { receiptImageData: _omit, ...slim } = session;
+    const res = await fetch("/api/split", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(slim),
+    });
+    const data = (await res.json()) as { id?: string; error?: string };
+    if (!res.ok || !data.id) throw new Error(data.error || "Could not create link.");
+    // Remember it's shared so the Summary starts syncing paid statuses.
+    if (!session.shared) onChange({ ...session, shared: true });
+    return `${window.location.origin}/s/${data.id}`;
+  }
+
+  async function copyLink() {
+    setShareBusy("copy");
     setShareMsg(null);
     try {
-      // Don't ship the (large, ephemeral) receipt photo to the share store.
-      const { receiptImageData: _omit, ...slim } = session;
-      const res = await fetch("/api/split", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(slim),
-      });
-      const data = (await res.json()) as { id?: string; error?: string };
-      if (!res.ok || !data.id) throw new Error(data.error || "Could not create link.");
-      // Remember it's shared so the Summary starts syncing paid statuses.
-      if (!session.shared) onChange({ ...session, shared: true });
-      const url = `${window.location.origin}/s/${data.id}`;
+      await navigator.clipboard.writeText(await createLink());
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2200);
+    } catch (e) {
+      setShareMsg(e instanceof Error ? e.message : "Couldn't copy the link.");
+    } finally {
+      setShareBusy(null);
+    }
+  }
+
+  async function shareLink() {
+    setShareBusy("share");
+    setShareMsg(null);
+    try {
+      const url = await createLink();
       const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
       if (nav.share) {
         await nav.share({ title: "Divvy split", url });
       } else {
         await navigator.clipboard.writeText(url);
-        setShareMsg("Link copied to clipboard.");
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 2200);
       }
     } catch (e) {
       if (e instanceof Error && e.name !== "AbortError") setShareMsg(e.message);
     } finally {
-      setShareBusy(false);
+      setShareBusy(null);
     }
   }
 
@@ -394,19 +415,36 @@ export default function SummaryScreen({
             </div>
           </div>
 
-          <Button onClick={shareLink} disabled={shareBusy}>
-            {shareBusy ? (
-              <>
-                <Spinner className="h-5 w-5" /> Creating link…
-              </>
-            ) : (
-              <>
-                <ShareIcon /> Copy shareable link
-              </>
-            )}
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={copyLink} disabled={shareBusy !== null}>
+              {shareBusy === "copy" ? (
+                <Spinner className="h-5 w-5" />
+              ) : copied ? (
+                <>
+                  <CheckIcon /> Copied!
+                </>
+              ) : (
+                <>
+                  <CopyIcon /> Copy link
+                </>
+              )}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={shareLink}
+              disabled={shareBusy !== null}
+            >
+              {shareBusy === "share" ? (
+                <Spinner className="h-5 w-5" />
+              ) : (
+                <>
+                  <ShareIcon /> Share
+                </>
+              )}
+            </Button>
+          </div>
           {shareMsg && (
-            <p className={`${T.caption} mt-3 text-center text-text-secondary`}>
+            <p className={`${T.caption} mt-3 text-center text-destructive`}>
               {shareMsg}
             </p>
           )}

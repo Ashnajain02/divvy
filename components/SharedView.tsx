@@ -3,6 +3,7 @@
 // Read-only-ish shared split view at /s/[id]. Anyone with the link can open it
 // and toggle their own paid status, which is written back to Upstash via PATCH.
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BackgroundFlourish,
@@ -106,12 +107,12 @@ export default function SharedView({ initial }: { initial: SplitSession }) {
       <div className="mx-auto max-w-2xl px-5 pb-16 pt-6">
         {/* Header */}
         <header className="mb-5 flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2">
+          <Link href="/" className="press flex items-center gap-2" aria-label="Divvy home">
             <Logo className="h-8 w-8 rounded-[9px]" />
             <span className="font-serif text-[24px] font-bold text-primary">
               Divvy
             </span>
-          </span>
+          </Link>
           <span className={`${T.title} min-w-0 truncate text-text-secondary`}>
             {session.restaurantName || "Untitled receipt"}
           </span>

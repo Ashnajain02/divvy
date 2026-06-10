@@ -7,7 +7,6 @@ import Link from "next/link";
 import SharedView from "@/components/SharedView";
 import { BackgroundFlourish, type as T } from "@/components/ui";
 import { ReceiptIcon } from "@/components/icons";
-import { formatMoney, grandTotal } from "@/lib/compute";
 import { getSharedSplit } from "@/lib/redis";
 
 // Always fetch fresh so a friend's "mark paid" shows up on refresh.
@@ -28,11 +27,8 @@ export async function generateMetadata({
   try {
     const s = await getSharedSplit(id);
     if (s) {
-      const where = s.restaurantName?.trim() || "Dinner";
-      const n = s.people.length;
-      title = `${where} — ${formatMoney(grandTotal(s))}, split ${n} ${
-        n === 1 ? "way" : "ways"
-      }`;
+      const where = s.restaurantName?.trim();
+      title = where ? `${where} — your Divvy split` : "Your Divvy split";
     }
   } catch {
     // generic title is fine

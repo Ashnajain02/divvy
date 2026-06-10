@@ -181,6 +181,16 @@ export function SplitIcon(p: IconProps) {
   );
 }
 
+export function UserPlusIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="9" cy="8" r="3.3" />
+      <path d="M3.6 19.2a5.5 5.5 0 0 1 10.8 0" />
+      <path d="M18.5 8.5v5M16 11h5" />
+    </Svg>
+  );
+}
+
 export function AlertIcon(p: IconProps) {
   return (
     <Svg {...p}>

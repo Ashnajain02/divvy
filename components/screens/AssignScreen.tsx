@@ -13,7 +13,7 @@ import {
   StickyBar,
   type as T,
 } from "@/components/ui";
-import { CloseIcon, PlusIcon } from "@/components/icons";
+import { CloseIcon, UserPlusIcon } from "@/components/icons";
 import { TextField } from "@/components/inputs";
 import { formatMoney, itemTotal } from "@/lib/compute";
 import { displayName } from "@/lib/session";
@@ -30,9 +30,9 @@ export default function AssignScreen({
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const [modal, setModal] = useState<
-    { mode: "add" } | { mode: "edit"; name: string } | null
-  >(null);
+  // Name currently being edited (tap a chip), and the inline add-field draft.
+  const [editName, setEditName] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
 
   const unassignedCount = useMemo(
     () => session.items.filter((i) => i.assignedTo.length === 0).length,
@@ -41,11 +41,41 @@ export default function AssignScreen({
   const allAssigned = unassignedCount === 0 && session.items.length > 0;
 
   // ── People ops ─────────────────────────────────────────────────────────────
-  function addPerson(name: string) {
-    const n = name.trim();
-    if (!n) return;
-    if (session.people.some((p) => p.toLowerCase() === n.toLowerCase())) return;
-    onChange({ ...session, people: [...session.people, n] });
+  // Add one or many names at once: split on commas/new lines, trim, de-dupe
+  // (case-insensitive), and append them all in a single update.
+  function addPeople(raw: string) {
+    const seen = new Set(session.people.map((p) => p.toLowerCase()));
+    const toAdd: string[] = [];
+    for (const tok of raw.split(/[,\n]+/)) {
+      const n = tok.trim();
+      if (!n) continue;
+      const key = n.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        toAdd.push(n);
+      }
+    }
+    if (toAdd.length) {
+      onChange({ ...session, people: [...session.people, ...toAdd] });
+    }
+  }
+
+  // The inline field commits a name whenever the user types a comma/return; the
+  // remainder after the last separator stays in the field for the next name.
+  function onDraftChange(v: string) {
+    const lastSep = Math.max(v.lastIndexOf(","), v.lastIndexOf("\n"));
+    if (lastSep >= 0) {
+      addPeople(v.slice(0, lastSep));
+      setDraft(v.slice(lastSep + 1).trimStart());
+    } else {
+      setDraft(v.trimStart());
+    }
+  }
+  function commitDraft() {
+    if (draft.trim()) {
+      addPeople(draft);
+      setDraft("");
+    }
   }
   function removePerson(name: string) {
     onChange({
@@ -93,34 +123,73 @@ export default function AssignScreen({
         {/* People */}
         <section>
           <SectionHeader>People</SectionHeader>
-          <div className="flex flex-wrap gap-2">
-            {session.people.map((p) => (
-              <span
-                key={p}
-                className={`inline-flex items-center overflow-hidden rounded-full border border-gold/30 bg-background-deep ${T.label} text-text-primary`}
-              >
-                <button
-                  onClick={() => setModal({ mode: "edit", name: p })}
-                  className="press min-h-10 py-1.5 pl-3.5 pr-1.5"
-                >
-                  {p}
-                </button>
-                <button
-                  aria-label={`Remove ${p}`}
-                  onClick={() => removePerson(p)}
-                  className="press flex h-10 w-9 items-center justify-center text-text-tertiary hover:text-destructive"
-                >
-                  <CloseIcon className="h-4 w-4" />
-                </button>
-              </span>
-            ))}
-            <button
-              onClick={() => setModal({ mode: "add" })}
-              className={`press inline-flex min-h-10 items-center gap-1 rounded-full border border-dashed border-primary-light/50 px-3.5 py-1.5 ${T.label} text-primary-light`}
-            >
-              <PlusIcon className="h-4 w-4" /> Add
-            </button>
+
+          {/* Prominent add field — type names, comma/return commits each. */}
+          <div className="flex min-h-12 items-center gap-2.5 rounded-[14px] border border-transparent bg-background-deep/60 px-3.5 transition-colors focus-within:border-gold/40 focus-within:bg-background-deep/90">
+            <UserPlusIcon className="h-5 w-5 shrink-0 text-text-tertiary" />
+            <input
+              value={draft}
+              onChange={(e) => onDraftChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitDraft();
+                } else if (
+                  e.key === "Backspace" &&
+                  draft === "" &&
+                  session.people.length > 0
+                ) {
+                  removePerson(session.people[session.people.length - 1]);
+                }
+              }}
+              onBlur={commitDraft}
+              placeholder={session.people.length ? "Add another…" : "Add people…"}
+              aria-label="Add people"
+              autoFocus={session.people.length === 0}
+              autoCapitalize="words"
+              autoCorrect="off"
+              autoComplete="off"
+              enterKeyHint="done"
+              className={`min-w-0 flex-1 bg-transparent py-3 ${T.body} text-text-primary outline-none placeholder:text-text-tertiary`}
+            />
           </div>
+
+          {/* Added people as avatar chips. */}
+          {session.people.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {session.people.map((p) => (
+                <span
+                  key={p}
+                  className="a-pop inline-flex items-center gap-2 rounded-full border border-gold/25 bg-card py-1 pl-1.5 pr-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
+                >
+                  <span
+                    className="flex h-7 w-7 items-center justify-center rounded-full font-rounded text-[13px] font-bold"
+                    style={{ background: "rgba(46,31,97,0.12)", color: "rgb(46,31,97)" }}
+                  >
+                    {p.charAt(0).toUpperCase()}
+                  </span>
+                  <button
+                    onClick={() => setEditName(p)}
+                    className={`press ${T.label} text-text-primary`}
+                  >
+                    {p}
+                  </button>
+                  <button
+                    aria-label={`Remove ${p}`}
+                    onClick={() => removePerson(p)}
+                    className="press flex h-6 w-6 items-center justify-center rounded-full text-text-tertiary hover:text-destructive"
+                  >
+                    <CloseIcon className="h-4 w-4" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className={`${T.small} mt-2 px-1 text-text-tertiary`}>
+              Type a name and press return — or add several at once: “Alex, Sam,
+              Jordan”.
+            </p>
+          )}
         </section>
 
         <GoldDivider />
@@ -205,15 +274,14 @@ export default function AssignScreen({
         )}
       </StickyBar>
 
-      {modal && (
+      {editName !== null && (
         <NameModal
-          initial={modal.mode === "edit" ? modal.name : ""}
-          title={modal.mode === "edit" ? "Edit name" : "Add person"}
-          onCancel={() => setModal(null)}
+          initial={editName}
+          title="Edit name"
+          onCancel={() => setEditName(null)}
           onSubmit={(name) => {
-            if (modal.mode === "edit") renamePerson(modal.name, name);
-            else addPerson(name);
-            setModal(null);
+            renamePerson(editName, name);
+            setEditName(null);
           }}
         />
       )}

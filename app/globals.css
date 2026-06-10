@@ -243,6 +243,10 @@ input[type="number"] {
   height: 100%;
   object-fit: contain;
   will-change: transform, opacity;
+  /* Keep each piece on its own GPU layer so scrolling only composites
+     (no re-paint/re-raster) — this is what makes the split feel smooth. */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 /* --q is the "split progress": it reaches 1 at ~70% scroll so the pieces have
    fully flown off-screen well before the pin releases (the last ~30% is a hold
@@ -250,13 +254,13 @@ input[type="number"] {
    entirely on any screen, then fade as they go. */
 /* Fork + top-right D half: pulled up and to the right, off-screen. */
 .split-top {
-  transform: translate(calc(var(--q, 0) * 80vw), calc(var(--q, 0) * -80vh))
+  transform: translate3d(calc(var(--q, 0) * 80vw), calc(var(--q, 0) * -80vh), 0)
     rotate(calc(var(--q, 0) * 12deg));
   opacity: clamp(0, calc((0.92 - var(--q, 0)) * 7), 1);
 }
 /* Spoon + bottom-left D half: pulled down and to the left, off-screen. */
 .split-bottom {
-  transform: translate(calc(var(--q, 0) * -80vw), calc(var(--q, 0) * 80vh))
+  transform: translate3d(calc(var(--q, 0) * -80vw), calc(var(--q, 0) * 80vh), 0)
     rotate(calc(var(--q, 0) * -12deg));
   opacity: clamp(0, calc((0.92 - var(--q, 0)) * 7), 1);
 }
@@ -299,17 +303,6 @@ input[type="number"] {
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    /* Warm deep browns, never pure black — keep the warmth. */
-    --color-background: rgb(28, 23, 18);
-    --color-background-deep: rgb(22, 18, 14);
-    --color-card: rgb(40, 33, 26);
-    --color-text-primary: rgb(243, 237, 227);
-    --color-text-secondary: rgb(188, 175, 159);
-    --color-text-tertiary: rgb(150, 138, 124);
-    --color-text-disabled: rgb(104, 94, 82);
-    --color-primary-light: rgb(150, 122, 222);
-  }
-}
+/* Divvy is intentionally always its warm light scheme — the cream/indigo
+   palette IS the brand, so we do NOT invert under prefers-color-scheme: dark.
+   color-scheme: light (set on :root above) also keeps form controls light. */

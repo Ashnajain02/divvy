@@ -47,6 +47,7 @@ const DESIGN_W = 390;
 export default function AppTour() {
   const sectionRef = useRef<HTMLElement>(null);
   const stepRef = useRef(0);
+  const metrics = useRef({ top: 0, range: 1 });
   const [reduced, setReduced] = useState(false);
   const [step, setStep] = useState(0);
 
@@ -60,13 +61,17 @@ export default function AppTour() {
     if (reduced) return;
     const section = sectionRef.current;
     if (!section) return;
+    const measure = () => {
+      metrics.current = {
+        top: section.getBoundingClientRect().top + window.scrollY,
+        range: Math.max(section.offsetHeight - window.innerHeight, 1),
+      };
+    };
     let raf = 0;
     const update = () => {
       raf = 0;
-      const rect = section.getBoundingClientRect();
-      const total = section.offsetHeight - window.innerHeight;
-      const scrolled = Math.min(Math.max(-rect.top, 0), Math.max(total, 1));
-      const p = total > 0 ? scrolled / total : 0;
+      const { top, range } = metrics.current;
+      const p = Math.min(Math.max((window.scrollY - top) / range, 0), 1);
       // Which of the four screens is showing. Capture/Review/Assign get shorter
       // windows; the Summary (the payoff) holds for the whole back third.
       const s = p < 0.22 ? 0 : p < 0.43 ? 1 : p < 0.64 ? 2 : 3;
@@ -78,12 +83,17 @@ export default function AppTour() {
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update);
     };
+    const onResize = () => {
+      measure();
+      update();
+    };
+    measure();
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("resize", onResize);
       if (raf) cancelAnimationFrame(raf);
     };
   }, [reduced]);

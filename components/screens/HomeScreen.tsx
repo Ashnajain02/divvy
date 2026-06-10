@@ -58,25 +58,24 @@ export default function HomeScreen({
           </div>
         </header>
 
-        {/* Your Venmo — saved once, auto-fills every shareable link. */}
-        <Card className="mb-7 flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-rounded text-[17px] font-bold text-primary">
-            @
-          </span>
+        {/* Your Venmo — saved once, auto-fills every shareable link. The "@" is
+            a fixed prefix; the user types only their username. */}
+        <Card className="mb-7 flex items-center gap-2.5">
           <label htmlFor="venmo-handle" className={`${T.label} shrink-0 text-text-secondary`}>
             Your Venmo
           </label>
+          <span className={`${T.body} text-text-tertiary`}>@</span>
           <input
             id="venmo-handle"
             type="text"
             value={venmo}
-            onChange={(e) => onChangeVenmo(e.target.value)}
-            placeholder="@username"
+            onChange={(e) => onChangeVenmo(e.target.value.replace(/^@+/, ""))}
+            placeholder="username"
             autoComplete="off"
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
-            className={`min-w-0 flex-1 bg-transparent text-right ${T.body} text-text-primary outline-none placeholder:text-text-tertiary`}
+            className={`-ml-1 min-w-0 flex-1 bg-transparent ${T.body} text-text-primary outline-none placeholder:text-text-tertiary`}
           />
         </Card>
 

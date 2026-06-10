@@ -25,7 +25,6 @@ import {
 } from "@/components/icons";
 import ReceiptViewer from "@/components/ReceiptViewer";
 import ShareCard from "@/components/ShareCard";
-import { TextField } from "@/components/inputs";
 import {
   computeBreakdown,
   formatMoney,
@@ -416,20 +415,31 @@ export default function SummaryScreen({
             Share split
           </h2>
 
-          {/* Your Venmo — so friends opening the link can pay you back. */}
+          {/* Your Venmo — so friends opening the link can pay you back. The "@"
+              is a fixed prefix; type only the username. */}
           <div className="mb-4">
             <label className={`${T.small} mb-1 block px-1 text-text-secondary`}>
               Your Venmo (so friends can pay you back)
             </label>
-            <TextField
-              value={session.payerVenmo ?? ""}
-              onChange={(v) => {
-                onChange({ ...session, payerVenmo: v });
-                onSaveVenmo?.(v); // remember it for next time
-              }}
-              ariaLabel="Your Venmo username"
-              placeholder="@your-venmo"
-            />
+            <div className="flex min-h-11 items-center rounded-[10px] bg-background-deep/40 px-3">
+              <span className={`${T.body} text-text-tertiary`}>@</span>
+              <input
+                type="text"
+                value={session.payerVenmo ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/^@+/, "");
+                  onChange({ ...session, payerVenmo: v });
+                  onSaveVenmo?.(v); // remember it for next time
+                }}
+                aria-label="Your Venmo username"
+                placeholder="username"
+                autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                className={`ml-0.5 min-w-0 flex-1 bg-transparent ${T.body} text-text-primary outline-none placeholder:text-text-tertiary`}
+              />
+            </div>
           </div>
 
           <div className="space-y-3">

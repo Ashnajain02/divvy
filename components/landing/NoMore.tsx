@@ -38,6 +38,7 @@ const INDIGO = "linear-gradient(to right, rgb(46,31,97), rgb(89,56,166))";
 export default function NoMore() {
   const sectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const metrics = useRef({ top: 0, range: 1 });
   const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
@@ -52,13 +53,17 @@ export default function NoMore() {
     const stage = stageRef.current;
     if (!section || !stage) return;
 
+    const measure = () => {
+      metrics.current = {
+        top: section.getBoundingClientRect().top + window.scrollY,
+        range: Math.max(section.offsetHeight - window.innerHeight, 1),
+      };
+    };
     let raf = 0;
     const update = () => {
       raf = 0;
-      const rect = section.getBoundingClientRect();
-      const total = section.offsetHeight - window.innerHeight;
-      const scrolled = Math.min(Math.max(-rect.top, 0), Math.max(total, 1));
-      const p = total > 0 ? scrolled / total : 0;
+      const { top, range } = metrics.current;
+      const p = Math.min(Math.max((window.scrollY - top) / range, 0), 1);
       WINDOWS.forEach((w, i) =>
         stage.style.setProperty(`--s${i}`, seg(p, w).toFixed(4)),
       );
@@ -67,12 +72,17 @@ export default function NoMore() {
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update);
     };
+    const onResize = () => {
+      measure();
+      update();
+    };
+    measure();
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("resize", onResize);
       if (raf) cancelAnimationFrame(raf);
     };
   }, [reduced]);

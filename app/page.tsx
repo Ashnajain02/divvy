@@ -106,7 +106,7 @@ function FallbackHero() {
         </p>
         <Link
           href="/app"
-          className="a-fadeup press mt-8 flex min-h-12 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-white px-7 py-4 font-rounded text-[17px] font-semibold text-primary shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+          className="a-fadeup press mt-8 flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 font-rounded text-[16px] font-semibold text-primary shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
           style={{ animationDelay: "0.5s" }}
         >
           <CameraIcon /> Scan a receipt
@@ -138,7 +138,7 @@ function ClosingCTA() {
         </p>
         <Link
           href="/app"
-          className="press mt-7 flex min-h-12 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-white px-7 py-4 font-rounded text-[17px] font-semibold text-primary shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+          className="press mt-7 flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 font-rounded text-[16px] font-semibold text-primary shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
         >
           <CameraIcon /> Scan a receipt
         </Link>

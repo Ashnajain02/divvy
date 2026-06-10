@@ -13,6 +13,11 @@ import { CameraIcon, ChevronDownIcon } from "@/components/icons";
 const INDIGO_GRAD =
   "linear-gradient(165deg, rgb(40,27,86) 0%, rgb(46,31,97) 45%, rgb(63,42,120) 100%)";
 
+// Soft glows baked into the stage background as radial gradients (painted once)
+// instead of separate blurred DOM layers — blur filters repaint on every scroll
+// frame and are the main cause of jank on the pinned hero.
+const HERO_BG = `radial-gradient(55% 45% at 14% 6%, rgba(199,166,97,0.20), transparent 70%), radial-gradient(70% 60% at 88% 94%, rgba(89,56,166,0.55), transparent 70%), ${INDIGO_GRAD}`;
+
 export type Sprites = {
   fork: string;
   spoon: string;
@@ -24,6 +29,7 @@ export default function SplitHero({ sprites }: { sprites: Sprites }) {
   const sectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
+  const metrics = useRef({ top: 0, range: 1 });
   const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
@@ -38,13 +44,20 @@ export default function SplitHero({ sprites }: { sprites: Sprites }) {
     const stage = stageRef.current;
     if (!section || !stage) return;
 
+    // Measure layout only on mount/resize (not every scroll frame) so the
+    // scroll handler never forces a synchronous reflow — the key to smoothness.
+    const measure = () => {
+      metrics.current = {
+        top: section.getBoundingClientRect().top + window.scrollY,
+        range: Math.max(section.offsetHeight - window.innerHeight, 1),
+      };
+    };
+
     let raf = 0;
     const update = () => {
       raf = 0;
-      const rect = section.getBoundingClientRect();
-      const total = section.offsetHeight - window.innerHeight;
-      const scrolled = Math.min(Math.max(-rect.top, 0), Math.max(total, 1));
-      const p = total > 0 ? scrolled / total : 0;
+      const { top, range } = metrics.current;
+      const p = Math.min(Math.max((window.scrollY - top) / range, 0), 1);
       // Split finishes at 70% of the scrub; the rest is a hold on the reveal.
       const q = Math.min(p / 0.7, 1);
       stage.style.setProperty("--p", p.toFixed(4));
@@ -59,12 +72,17 @@ export default function SplitHero({ sprites }: { sprites: Sprites }) {
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update);
     };
+    const onResize = () => {
+      measure();
+      update();
+    };
+    measure();
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("resize", onResize);
       if (raf) cancelAnimationFrame(raf);
     };
   }, [reduced]);
@@ -87,7 +105,7 @@ export default function SplitHero({ sprites }: { sprites: Sprites }) {
         </p>
         <Link
           href="/app"
-          className="press mt-8 flex min-h-12 items-center justify-center gap-2 rounded-full bg-white px-7 py-4 font-rounded text-[17px] font-semibold text-primary shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+          className="press mt-8 flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 font-rounded text-[16px] font-semibold text-primary shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
         >
           <CameraIcon /> Scan a receipt
         </Link>
@@ -101,20 +119,8 @@ export default function SplitHero({ sprites }: { sprites: Sprites }) {
       <div
         ref={stageRef}
         className="sticky top-0 flex h-[100dvh] flex-col items-center justify-center overflow-hidden"
-        style={{ background: INDIGO_GRAD }}
+        style={{ background: HERO_BG }}
       >
-        {/* Ambient blobs */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full blur-3xl"
-          style={{ background: "rgb(199,166,97)", opacity: 0.16 }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-28 -right-24 h-96 w-96 rounded-full blur-3xl"
-          style={{ background: "rgb(89,56,166)", opacity: 0.45 }}
-        />
-
         {/* The splitting logo */}
         <div className="relative aspect-square w-[min(72vw,360px)]">
           {/* Revealed underneath (behind the sprite layers) */}
@@ -138,7 +144,7 @@ export default function SplitHero({ sprites }: { sprites: Sprites }) {
         >
           <Link
             href="/app"
-            className="press flex min-h-12 items-center justify-center gap-2 rounded-full bg-white px-7 py-4 font-rounded text-[17px] font-semibold text-primary shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+            className="press flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 font-rounded text-[16px] font-semibold text-primary shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
           >
             <CameraIcon /> Scan a receipt
           </Link>
